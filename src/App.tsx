@@ -1,34 +1,40 @@
 import { FabricJSCanvas, useFabricJSEditor } from "fabricjs-react";
 import { fabric } from "fabric";
 import "./App.css";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Design from "./types/design";
 
 export default function App() {
   const { editor, onReady } = useFabricJSEditor();
   const [designs, setDesigns] = useState<Design[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const selectedObject = useMemo(() => {
+    return editor?.canvas.getActiveObject();
+  }, [editor?.canvas.getActiveObjects()]);
 
-  const onAddCircle = () => {
+  const handleAddCircle = () => {
     editor?.addCircle();
   };
-  const onAddRectangle = () => {
+  const handleAddRectangle = () => {
     editor?.addRectangle();
   };
-  const onAddImage = () => {
+  const handleAddImage = () => {
     fabric.Image.fromURL("https://picsum.photos/seed/picsum/200", (image) => {
       editor?.canvas.add(image);
     });
   };
-  const onReset = () => {
-    editor?.canvas.loadFromJSON({ version: "4.3.1", objects: [] }, () => {});
+  const handleRemoveObject = () => {
+    if (selectedObject) editor?.canvas.remove(selectedObject);
+  };
+  const handleClearSelection = () => {
+    editor?.canvas.discardActiveObject().renderAll();
+  };
+  const handleReset = () => {
+    editor?.canvas.clear();
+    editor?.canvas.selection;
   };
 
   const changeDesign = (design: Design) => {
-    setIsLoading(true);
-    editor?.canvas.loadFromJSON(design.data, () => {
-      setIsLoading(false);
-    });
+    editor?.canvas.loadFromJSON(design.data, () => {});
   };
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -61,16 +67,21 @@ export default function App() {
     if (savedDesigns) {
       setDesigns(JSON.parse(savedDesigns));
     }
-    setIsLoading(false);
+
+    //Disables multi selection
+    editor?.canvas.on("selection:created", (e) => {
+      if (e.target?.type == "activeSelection")
+        editor.canvas.discardActiveObject();
+    });
   }, []);
 
   return (
     <div className="App">
       <h1>FabricJS React Sample</h1>
-      <button onClick={onAddCircle}>Add circle</button>
-      <button onClick={onAddRectangle}>Add Rectangle</button>
-      <button onClick={onAddImage}>Add Image</button>
-      <button onClick={onReset}>Reset</button>
+      <button onClick={handleAddCircle}>Add circle</button>
+      <button onClick={handleAddRectangle}>Add Rectangle</button>
+      <button onClick={handleAddImage}>Add Image</button>
+      <button onClick={handleReset}>Reset</button>
       <form onSubmit={handleSubmit}>
         <input type="text" name="title" placeholder="Design title here..." />
         <input type="submit" value="Save" />
@@ -101,8 +112,14 @@ export default function App() {
           ))}
         </div>
       )}
+      <button disabled={!selectedObject} onClick={handleRemoveObject}>
+        Remove Selected
+      </button>
 
-      <FabricJSCanvas className="sample-canvas" onReady={onReady} />
+      <div className="canvas">
+        <div className="canvas-background" onClick={handleClearSelection}></div>
+        <FabricJSCanvas className="canvas-foreground" onReady={onReady} />
+      </div>
     </div>
   );
 }

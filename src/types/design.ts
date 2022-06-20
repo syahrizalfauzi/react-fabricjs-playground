@@ -1,4 +1,4 @@
 export default interface Design {
   title: string;
-  data: any;
+  data: string[];
 }
